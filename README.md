@@ -309,7 +309,7 @@ This project is released under the [Apache License 2.0](LICENSE).
 
 <div align="center">
 
-[![Star History Chart](https://api.star-history.com/svg?repos=ISEE-Laboratory/OmniDexGrasp&type=Date)](https://star-history.com/#ISEE-Laboratory/OmniDexGrasp&Date)
+[![Stargazers over time](https://starchart.cc/iSEE-Laboratory/OmniDexGrasp.svg?variant=adaptive)](https://starchart.cc/iSEE-Laboratory/OmniDexGrasp)
 
 </div>
 
