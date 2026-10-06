@@ -18,6 +18,7 @@ import numpy as np
 import requests
 import torch
 import trimesh
+import yaml
 from omegaconf import DictConfig
 from PIL import Image
 
@@ -207,6 +208,9 @@ def process_task(task: TaskInput, cfg: DictConfig) -> TaskOutput:
     logging.info(f"     └─ cleaned: {pcd_clean.shape[0]}")
 
     scale_factor, pcd_ext, mesh_ext = compute_obj_scale(pcd_clean, task.obj_mesh)
+    known = yaml.safe_load(open(task.task_dir / "camera.yaml")).get("obj_max_extent_m")
+    if known:  # measured longest object dimension overrides the depth-based estimate
+        scale_factor = known / mesh_ext
     output.scale = ScaleResult(
         scale_factor=scale_factor,
         pcd_num_points=pcd_clean.shape[0],
