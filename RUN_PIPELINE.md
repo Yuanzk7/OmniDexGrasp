@@ -79,17 +79,10 @@ python scripts/calibrate_eye_to_hand.py --base <J1> <J2> <J3> <J4> <J5> <J6> <J7
 ```
 확인: `consistency std` 5 mm 이하. 이후 카메라를 절대 움직이지 않는다 (움직이면 재캘리브레이션 + 재촬영).
 
-### 2) 캘리브레이션 검증 (Stage 1 이후)
-```bash
-python scripts/verify_calibration.py --task <task>          # 물체 중심의 베이스 좌표 출력
-python scripts/verify_calibration.py --task <task> --move   # TCP를 물체 중심 15 cm 위로 이동
-```
-손이 물체 바로 위에 오면 통과.
-
-### 3) 손 장착 변환
+### 2) 손 장착 변환
 `calibration/hand_mount.json`에 플랜지→손 URDF 루트 변환(yaw, 어댑터 두께). 현재 값은 카메라 실루엣 피팅으로 추정(yaw 215°, d 0 mm). 장착을 바꾸면 수정.
 
-### 4) 목표 자세 계산 → 실행
+### 3) 목표 자세 계산 → 실행
 ```bash
 cd omnidexgrasp && conda activate omnidexgrasp
 python -m scripts.robo_to_camera --task <task>   # → robo_cam.json: T_cam_hand, T_base_hand, T_base_tcp, xarm_tcp_aa_mm_rad
