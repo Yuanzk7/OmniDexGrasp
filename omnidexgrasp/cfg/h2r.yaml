@@ -1,6 +1,7 @@
 # Human-to-Robot hand retargeting config
 datasets: ../datasets
 output: ../out
+tasks: []    # task folder names to process; empty = all
 
 # Available hand types: inspire, wuji, shadow
 hand_types: [inspire]

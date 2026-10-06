@@ -26,6 +26,32 @@ Zhizhao Liang,
 
 </div>
 
+## Local workspace (2026-09-30)
+
+The active checkout, datasets, checkpoints and results are now consolidated in
+`/home/unist/Paper_implementaion/OmniDexGrasp`. Previous unused checkouts were
+preserved under `../OmniDexGrasp_backups/20260930-consolidation/`.
+Do not run commands from the previous `/home/unist/OmniDexGrasp` location.
+
+```bash
+conda activate omnidexgrasp
+export PYTHONNOUSERSITE=1
+cd /home/unist/Paper_implementaion/OmniDexGrasp/omnidexgrasp
+python -m optim.main --cfg job  # import/config check only
+python -m optim.main
+```
+
+Results remain in the checkout's `out/` directory. Licensed MANO files live in
+`assets/mano/models/`; EasyHOI's `assets/mano` is a relative symlink to this shared
+directory. The four conda environments' editable source paths and the HaMeR
+checkpoint configuration were updated for this location. MANO loading also needs
+`chumpy` (official source commit `580566eafc9ac68b2614b64d6f7aaa84eebb70da`).
+Use `PYTHONNOUSERSITE=1` to avoid importing unrelated packages from `~/.local`;
+the reconstruction launcher already sets it. Dependency checks pass for all four
+environments with this setting. The relocation was checked with the 10
+reconstruction tests and CUDA initialization of EasyHOI/MANO in a temporary
+directory; full optimization was not run or used to overwrite existing results.
+
 ## 📢 News
 
 - 🚧 *Coming soon...*
@@ -185,6 +211,19 @@ MANO hand model requires registration at [mano.is.tue.mpg.de](https://mano.is.tu
 <a id="usage"></a>
 
 ### 🍵 Stage 1: Reconstruction
+
+For a 16GB GPU, use the local sequential runner from the **repository root**:
+
+```bash
+bash scripts/run_reconstruction.sh sequential
+# Optional small test:
+bash scripts/run_reconstruction.sh sequential 'tasks=[RedMug_1,RedSqueezeBottle_2]'
+```
+
+Do not start HaMeR/GSAM separately when using this runner. It starts GSAM,
+caches segmentation results, stops it, then starts HaMeR and completes Phase 1.
+It stops both servers on completion/failure. Final output layout is unchanged.
+After Phase 1 succeeds, run `bash scripts/run_reconstruction.sh pose` for Phase 2.
 
 Reconstruct 3D hand and object from input images. All commands run from the `omnidexgrasp/` directory.
 

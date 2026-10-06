@@ -224,6 +224,8 @@ def main(cfg: DictConfig) -> None:
     output_dir = Path(cfg.output).resolve()
 
     all_task_dirs = sorted(d for d in datasets_dir.iterdir() if d.is_dir() and not d.name.startswith("."))
+    if cfg.get("tasks"):
+        all_task_dirs = [datasets_dir / name for name in cfg.tasks]
 
     # Pre-collect all valid task objects into a single RigidObjectDataset
     # This allows load_named_model() to be called just once for all tasks

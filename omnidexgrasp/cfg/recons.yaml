@@ -6,6 +6,9 @@ defaults:
 datasets: ../datasets
 output: ../out
 
+phase: all   # all | gsam | hamer — gsam/hamer split is used by recons.sequential (16GB GPU)
+tasks: []    # dataset folder names to process; empty = all
+
 servers:
   gsam: http://localhost:6001/predict
   hamer: http://localhost:6002/predict

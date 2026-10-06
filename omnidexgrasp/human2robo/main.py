@@ -43,6 +43,8 @@ def main(cfg: DictConfig) -> None:
     )
 
     task_dirs = [d for d in sorted(output_dir.iterdir()) if d.is_dir()]
+    if cfg.get("tasks"):
+        task_dirs = [output_dir / n for n in cfg.tasks]
     logging.info(f"🤖 H2R: {len(task_dirs)} tasks × {list(cfg.hand_types)}")
 
     for task_dir in task_dirs:

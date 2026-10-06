@@ -7,6 +7,7 @@ import io
 import json
 import logging
 import os
+from dataclasses import asdict
 from pathlib import Path
 
 os.environ.setdefault("no_proxy", "localhost,127.0.0.1")  # bypass proxy for localhost servers
@@ -26,6 +27,7 @@ from recons.data import (
     ScaleResult,
     TaskInput,
     TaskOutput,
+    load_single_task,
     load_tasks,
 )
 from utils.camera import CameraIntrinsics, compute_focal, dynamic_intrinsics
@@ -160,13 +162,34 @@ def process_task(task: TaskInput, cfg: DictConfig) -> TaskOutput:
     grasp_cam = dynamic_intrinsics(task.camera, grasp_img.width, grasp_img.height)
     grasp_focal = compute_focal(grasp_cam)
 
-    # 1️⃣ GSAM: scene_image (no hand)
-    logging.info("  🎭 GSAM: scene_image (no hand)")
-    output.gsam_scene = call_gsam(
-        cfg.servers.gsam, scene_b64, task.obj_description,
-        include_hand=False, timeout=timeout,
-    )
-    logging.info(f"     └─ {output.gsam_scene.status}: {output.gsam_scene.message}")
+    # Low-VRAM split (recons.sequential): phase=gsam runs both GSAM calls and caches
+    # them, phase=hamer reads the cache so only one model server is needed at a time.
+    phase = cfg.get("phase", "all")
+    cache_path = Path(cfg.output) / task.name / "data" / "recons" / "gsam_cache.json"
+    if phase == "hamer":
+        cache = json.loads(cache_path.read_text())
+        output.gsam_scene = GSAMResult(**cache["scene"])
+        output.gsam_grasp = GSAMResult(**cache["grasp"])
+    else:
+        # 1️⃣ GSAM: scene_image (no hand)
+        logging.info("  🎭 GSAM: scene_image (no hand)")
+        output.gsam_scene = call_gsam(
+            cfg.servers.gsam, scene_b64, task.obj_description,
+            include_hand=False, timeout=timeout,
+        )
+        logging.info(f"     └─ {output.gsam_scene.status}: {output.gsam_scene.message}")
+
+        # 3️⃣ GSAM: generated_grasp (with hand)
+        logging.info("  🎭 GSAM: generated_grasp (with hand)")
+        output.gsam_grasp = call_gsam(
+            cfg.servers.gsam, grasp_b64, task.obj_description,
+            include_hand=True, timeout=timeout,
+        )
+        logging.info(f"     └─ {output.gsam_grasp.status}: {output.gsam_grasp.message}")
+        if phase == "gsam":
+            cache_path.parent.mkdir(parents=True, exist_ok=True)
+            _write_json(cache_path, {"scene": asdict(output.gsam_scene), "grasp": asdict(output.gsam_grasp)})
+            return output
 
     # 2️⃣ Scale: compute object real-world scale
     logging.info("  📏 Scale: computing object real-world scale")
@@ -194,14 +217,6 @@ def process_task(task: TaskInput, cfg: DictConfig) -> TaskOutput:
     output.scene_pcd = pcd_clean  # scene obj pointcloud (denoised)
     logging.info(f"     └─ scale_factor: {scale_factor:.6f}")
     logging.info(f"     └─ pcd_extent: {pcd_ext:.4f}m, mesh_extent: {mesh_ext:.4f}")
-
-    # 3️⃣ GSAM: generated_grasp (with hand)
-    logging.info("  🎭 GSAM: generated_grasp (with hand)")
-    output.gsam_grasp = call_gsam(
-        cfg.servers.gsam, grasp_b64, task.obj_description,
-        include_hand=True, timeout=timeout,
-    )
-    logging.info(f"     └─ {output.gsam_grasp.status}: {output.gsam_grasp.message}")
 
     # 4️⃣ HaMeR: hand reconstruction
     logging.info(f"  🤚 HaMeR: hand reconstruction (focal={grasp_focal:.2f})")
@@ -365,13 +380,16 @@ def main(cfg: DictConfig) -> None:
 
     task_count = 0
     failed = []
-    for task in load_tasks(datasets_dir):
+    names = cfg.get("tasks") or []
+    tasks = (load_single_task(datasets_dir / n) for n in names) if names else load_tasks(datasets_dir)
+    for task in tasks:
         logging.info(f"\n{'=' * 60}")
         logging.info(f"🎯 Processing: {task.name}")
 
         try:
             result = process_task(task, cfg)
-            save_output(result, output_dir / task.name, cfg)
+            if cfg.get("phase", "all") != "gsam":
+                save_output(result, output_dir / task.name, cfg)
             task_count += 1
             logging.info(f"✅ Done: {task.name}")
         except Exception:

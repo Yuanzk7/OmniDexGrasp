@@ -11,8 +11,9 @@ import hydra
 import torch
 from omegaconf import DictConfig
 
-from models.hoi_optim_module import HOI_Sync
+# mesh_to_sdf가 pyrender보다 먼저 로딩되도록 순서 유지
 from optim.dataloader import OptimDataLoader
+from models.hoi_optim_module import HOI_Sync
 
 
 def run_optimization_stages(hoi_sync: HOI_Sync) -> None:
@@ -109,7 +110,8 @@ def main(cfg: DictConfig) -> None:
     project_root = str(Path(cfg.easyhoi_root).resolve())
     inter_out = cfg.out.inter_out
 
-    for task_dir in sorted(datasets_dir.iterdir()):
+    task_dirs = [datasets_dir / n for n in cfg.tasks] if cfg.get("tasks") else sorted(datasets_dir.iterdir())
+    for task_dir in task_dirs:
         if not task_dir.is_dir() or task_dir.name.startswith("."):
             continue
         out_dir = output_dir / task_dir.name

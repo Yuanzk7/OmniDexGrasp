@@ -1,6 +1,7 @@
 # 🤚 MANO Hand Optimization Config
 datasets: ../datasets
 output: ../out
+tasks: []    # dataset folder names to process; empty = all
 easyhoi_root: thirdparty/EasyHOI
 
 out:
