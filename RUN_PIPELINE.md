@@ -69,9 +69,33 @@ python -m human2robo.main 'tasks=[<task>]'     # → out/<task>/robo.json (hand_
 python -m scripts.vis_dexgrasp --output ../out --port 8080   # 브라우저 확인
 ```
 
-## 카메라 기준 로봇손 자세 (캘리브레이션 불필요)
-```bash
-python -m scripts.robo_to_camera --task <task>     # → out/<task>/robo_cam.json (T_cam_hand, joints)
-```
-`T_cam_hand = T_cam_obj(pose_est scene) · T_obj_hand(robo.json 손목 6개)`. 캘리브레이션 후 `T_base_hand = T_base_camera · T_cam_hand`.
+## 로봇 실행 (xarm-teleop 환경: xArm SDK 포함)
 
+### 1) 카메라-베이스 캘리브레이션 (카메라를 고정한 뒤 1회)
+팔 끝(손등)에 ChArUco 보드를 붙이고, 보드가 잘 보이는 기준 자세의 관절값 7개를 넣는다. 손목 관절만 바꾼 20자세를 자동으로 돌며 기록·풀이한다.
+```bash
+conda activate xarm-teleop
+python scripts/calibrate_eye_to_hand.py --base <J1> <J2> <J3> <J4> <J5> <J6> <J7>   # → calibration/eye_to_hand.json
+```
+확인: `consistency std` 5 mm 이하. 이후 카메라를 절대 움직이지 않는다 (움직이면 재캘리브레이션 + 재촬영).
+
+### 2) 캘리브레이션 검증 (Stage 1 이후)
+```bash
+python scripts/verify_calibration.py --task <task>          # 물체 중심의 베이스 좌표 출력
+python scripts/verify_calibration.py --task <task> --move   # TCP를 물체 중심 15 cm 위로 이동
+```
+손이 물체 바로 위에 오면 통과.
+
+### 3) 손 장착 변환
+`calibration/hand_mount.json`에 플랜지→손 URDF 루트 변환(yaw, 어댑터 두께). 현재 값은 카메라 실루엣 피팅으로 추정(yaw 215°, d 0 mm). 장착을 바꾸면 수정.
+
+### 4) 목표 자세 계산 → 실행
+```bash
+cd omnidexgrasp && conda activate omnidexgrasp
+python -m scripts.robo_to_camera --task <task>   # → robo_cam.json: T_cam_hand, T_base_hand, T_base_tcp, xarm_tcp_aa_mm_rad
+cd .. && conda activate xarm-teleop
+python scripts/execute_grasp.py --task <task> --lift 0.03   # 사전자세 → 파지자세 → 손가락 닫기 → 들어올리기, 단계마다 Enter
+python scripts/grasp_from_robo.py out/<task>/robo.json      # 손만 따로 쥐어 볼 때 (--close-scale 1.3 등으로 더 닫기)
+```
+- `--lift`: 사람 손 자세가 책상에 너무 낮을 때 전체를 올리는 보정(m). `--up`: 사전 자세 높이(기본 8 cm, 파지 자세 바로 위). `--back`: 손가락 반대 방향 후퇴(기본 0; 이 파지는 베이스 쪽이라 쓰지 않음).
+- 실행 전 비상정지에 손을 올리고, 첫 실행은 `--speed 20` 정도로.
