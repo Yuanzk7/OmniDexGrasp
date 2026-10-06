@@ -1,0 +1,34 @@
+{
+  "convention": "T_tcp_hand: Inspire URDF root (right_base_link, mounting-face center, fingers along -z) expressed in the xArm TCP frame; p_tcp = T_tcp_hand @ p_hand",
+  "model": "T_tcp_hand = Trans(0,0,d - tcp_offset) @ Rz(yaw) @ Rx(pi)",
+  "yaw_deg": 215.0,
+  "adapter_thickness_m": 0.0,
+  "tcp_offset_m": 0.172,
+  "T_tcp_hand": [
+    [
+      -0.8191520442889918,
+      -0.5735764363510462,
+      0.0,
+      0.0
+    ],
+    [
+      -0.5735764363510462,
+      0.8191520442889918,
+      0.0,
+      0.0
+    ],
+    [
+      0.0,
+      0.0,
+      -1.0,
+      -0.172
+    ],
+    [
+      0.0,
+      0.0,
+      0.0,
+      1.0
+    ]
+  ],
+  "source": "silhouette fit against a depth-masked camera frame at the hover pose (IoU 0.68); yaw +-10 deg, d 0-5 mm"
+}
