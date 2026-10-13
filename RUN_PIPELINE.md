@@ -26,16 +26,27 @@ python -c "from PIL import Image; Image.open('/home/unist/Downloads/result.png')
 
 ### 3) 물체 메쉬 (SAM 3 → SAM 3D Objects)
 ```bash
-# 마스크
+# 마스크 (datasets/<task>/mask.png 에 저장. 메쉬 생성과 물체 크기 추정에 같이 쓴다)
 cd ../sam3 && PYTHONPATH=$PWD /home/unist/anaconda3/envs/sam3/bin/python \
-  ../OmniDexGrasp/scripts/sam3_mask.py ../OmniDexGrasp/datasets/<task>/scene_image.png "<물체 설명>" /tmp/mask.png
+  ../OmniDexGrasp/scripts/sam3_mask.py ../OmniDexGrasp/datasets/<task>/scene_image.png "<물체 설명>" ../OmniDexGrasp/datasets/<task>/mask.png
 # 메쉬 (16GB GPU, 약 1분)
 cd ../sam-3d-objects && /home/unist/anaconda3/envs/sam3d-objects/bin/python demo_low_vram.py \
-  --image ../OmniDexGrasp/datasets/<task>/scene_image.png --mask /tmp/mask.png --output /tmp/raw.obj
+  --image ../OmniDexGrasp/datasets/<task>/scene_image.png --mask ../OmniDexGrasp/datasets/<task>/mask.png --output ../OmniDexGrasp/datasets/<task>/sam3d_raw.obj
 # 6만 면으로 축소 + base.obj/material.mtl/shaded.png 생성 + 확인용 렌더
 cd ../OmniDexGrasp && conda activate omnidexgrasp && \
-  python scripts/sam3d_to_base_obj.py /tmp/raw.obj datasets/<task> /tmp/render
+  python scripts/sam3d_to_base_obj.py datasets/<task>/sam3d_raw.obj datasets/<task> /tmp/render
 ```
+
+### Text2HOI 경로 (사람 손 이미지 생성과 Stage 1·2 대신)
+물체 크기는 자로 재지 않는다. `mask.png` 안의 `depth.png` 점으로 가장 긴 길이를 추정해 메쉬를 미터 단위로 맞춘다.
+```bash
+conda activate omnidexgrasp
+python scripts/sam3d_to_text2hoi_mesh.py --task <task>          # datasets/<task>/sam3d_raw.obj -> datasets/<task>/mesh/text2hoi.obj, 추정 길이 출력
+# Text2HOI 에서 obj_path=datasets/<task>/mesh/text2hoi.obj obj_scale=1.0 으로 손 동작 생성 -> <export>.npz
+python scripts/text2hoi_to_omnidex.py --npz <export>.npz --task <task> --frame all   # -> out/<task>_f###/ (Stage 3 입력)
+```
+- 출력된 `object longest extent` 가 눈대중과 크게 다르면 마스크가 샌 것이다. `mask.png` 를 확인하고 프롬프트를 바꿔 다시 만든다.
+- 메쉬가 뒤집혀 나오면 `--flip-z`, 손잡이 있는 머그처럼 오목한 물체는 `--no-hull`.
 
 ## Stage 1 — 복원 (저장소 루트에서)
 ```bash
