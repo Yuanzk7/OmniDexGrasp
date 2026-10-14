@@ -26,6 +26,7 @@ DELTAS = [
     (20, -8, 35), (-20, -8, -35), (0, -20, 30), (10, 6, -30),
 ]
 SPEED = 15  # deg/s
+ROBOT_IP = "192.168.1.216"
 
 
 def T(R, t):
@@ -66,7 +67,6 @@ def solve(T_base_tcp, T_cam_board):
 def main():
     p = argparse.ArgumentParser()
     p.add_argument("--base", type=float, nargs=7, required=True, metavar="J", help="J1..J7 in degrees")
-    p.add_argument("--ip", default="192.168.1.216")
     p.add_argument("--out", default="calibration/eye_to_hand.json")
     args = p.parse_args()
     base = np.array(args.base)
@@ -78,7 +78,7 @@ def main():
     cfg.enable_stream(rs.stream.color, 640, 480, rs.format.bgr8, 30)
     intr = pipe.start(cfg).get_stream(rs.stream.color).as_video_stream_profile().get_intrinsics()
     K = np.array([[intr.fx, 0, intr.ppx], [0, intr.fy, intr.ppy], [0, 0, 1]])
-    arm = XArmAPI(args.ip)
+    arm = XArmAPI(ROBOT_IP)
     arm.motion_enable(True); arm.set_mode(0); arm.set_state(0)
     input(f"{len(DELTAS)} poses at {SPEED} deg/s. Hand on E-stop, press Enter to start")
 
